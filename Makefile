@@ -22,11 +22,11 @@ COMBO_PLT = $(HOME)/.mud_context_combo_dialyzer_plt
 
 check_plt: deps compile
 	dialyzer --check_plt --plt $(COMBO_PLT) --apps $(APPS) \
-		deps/*/ebin apps/*/ebin
+		deps/*/ebin ebin
 
 build_plt: deps compile
 	dialyzer --build_plt --output_plt $(COMBO_PLT) --apps $(APPS) \
-		deps/*/ebin apps/*/ebin
+		deps/*/ebin ebin
 
 doc: deps compile
 	./rebar skip_deps=true doc
@@ -37,7 +37,7 @@ dialyzer_apps: deps compile
 	@echo Use "'make build_plt'" to build PLT prior to using this target.
 	@echo
 	@sleep 1
-	dialyzer -Wno_return --plt $(COMBO_PLT) apps/*/ebin
+	dialyzer -Wno_return -Wno_undefined_callbacks --plt $(COMBO_PLT) ebin
 
 dialyzer: deps compile
 	@echo
@@ -45,7 +45,7 @@ dialyzer: deps compile
 	@echo Use "'make build_plt'" to build PLT prior to using this target.
 	@echo
 	@sleep 1
-	dialyzer -Wno_return --plt $(COMBO_PLT) deps/*/ebin apps/*/ebin
+	dialyzer -Wno_return -Wno_undefined_callbacks --plt $(COMBO_PLT) deps/*/ebin ebin
 
 eunit: deps compile
 	./rebar eunit skip_deps=true

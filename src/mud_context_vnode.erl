@@ -17,6 +17,9 @@
          handle_handoff_data/2,
          encode_handoff_item/2]).
 
+
+-include_lib("riak_core/include/riak_core_vnode.hrl").
+
 -record(state, {partition, key_pids=[], key_queue=dict:new(), key_dict=dict:new()}).
 
 -define(PRINT(Var), io:format("DEBUG: ~p:~p - ~p~n~n ~p~n~n", [?MODULE, ?LINE, ??Var, Var])).
@@ -24,17 +27,18 @@
 
 
 %% API
+-spec mud_context_vnode:start_vnode(I::integer()) -> pid().
 start_vnode(I) ->
-%    io:format("Start user vnode ~p~n", [init:get_argument(config)]),
 io:format("start_vnode: ~p~n", [I]),
    riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
+-spec mud_context_vnode:init([I::integer()]) -> {ok, #state{}}.
 init([Partition]) ->
    io:format("vnode context init: ~p~n", [Partition]),
    {ok, #state { partition=Partition}}.
 
 -spec mud_context_vnode:handle_command
-   ({'set_context', Key::string(), Module::atom(), Fun::atom(), Args::term()},
+   ({'set_context' | 'set_synched_context' | 'create' | 'delete' | 'exists', Key::string(), Module::atom(), Fun::atom(), Args::term()},
       _Sender::{pid(), term()}, State::dict()) -> {noreply, #state{}}.
 
 handle_command({set_context, Key, Module, Fun, Args}, _Sender, State) ->
@@ -142,6 +146,7 @@ terminate(_Reason, _State) ->
 
 
 % If the key has a pid running then add to queue, otherwise
+-spec queue_add(Key::term(), Module::atom(), Fun::atom(), Args::term(), Sender::sender() | 'undefined', State::#state{}) -> #state{}.
 queue_add(Key, Module, Fun, Args, Sender, State) ->
    case xlists:keyfind(Key, 1, State#state.key_pids) of
       false ->
@@ -163,6 +168,7 @@ queue_add(Key, Module, Fun, Args, Sender, State) ->
          State#state{key_queue = xdict:store(Key, State#state.key_queue, lists:append(Queue, [{Module, Fun, Args, Sender}]))}
    end.
                   
+-spec run_key_callback(Key::term(), Module::atom(), Fun::atom(), Args::term(), Sender::sender() | 'undefined', State::#state{}) -> #state{}.
 run_key_callback(Key, Module, Fun, Args, Sender, State) ->
    {Key, KeyData} = xdict:find(Key, State#state.key_dict),
    VNodePid = self(),
@@ -170,6 +176,7 @@ run_key_callback(Key, Module, Fun, Args, Sender, State) ->
    % Store callback information 
    State#state{key_pids = xlists:keystore(Key, 1, State#state.key_pids, {Key, Pid, Sender})}.
 
+-spec process_completed_callback(Pid::pid(), {Reply::'reply' | 'noreply', RetValue::term(), NewKeyData::dict()}, State::#state{}) -> #state{}.
 process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State) ->
    % Get the Key for this pid
    case xlists:keyfind(Pid, 2, State#state.key_pids) of
@@ -197,7 +204,8 @@ process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State) ->
          end
    end.
 
-context_run(VNodePid, Module, Fun, Args, Sender, KeyData) -> 
+-spec context_run(VNodePid::pid(), Module::atom(), Fun::atom(), Args::term(), Sender::sender() | 'undefined', KeyData::term()) -> 'ok'.
+context_run(VNodePid, Module, Fun, Args, Sender, KeyData) ->
    case Sender of
       undefined ->
          {noreply, NewKeyData} = Module:Fun(Args, KeyData),
@@ -209,7 +217,8 @@ context_run(VNodePid, Module, Fun, Args, Sender, KeyData) ->
             {reply, RetValue, NewKeyData} ->
                VNodePid ! {process_completed, {reply, RetValue, NewKeyData}, self()}
          end
-   end.
+   end,
+   ok.
 
 
 
