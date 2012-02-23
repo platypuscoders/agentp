@@ -185,7 +185,8 @@ process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State) ->
                riak_core_vnode:reply(Sender, RetValue)
          end,
          case xdict:find(Key, State#state.key_queue) of
-            false ->
+            Val when Val =:= false;
+                      Val =:= [] ->
                % no more in the queue so clear out the key_pids
                NewKeyDict = xdict:store(Key, State#state.key_dict, NewKeyData),
                NewKeyPids = lists:keydelete(Pid, 2, State#state.key_pids), 
