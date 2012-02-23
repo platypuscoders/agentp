@@ -147,7 +147,7 @@ queue_add(Key, Module, Fun, Args, Sender, State) ->
       false ->
          % Nothing is blocking on this so let's run it
          run_key_callback(Key, Module, Fun, Args, Sender, State);
-      {Key, _Pid, Sender} -> 
+      {Key, _Pid, _Sender} -> 
          % A process is already running for this key data
          % so we need to stick this call on to the back of the queue
          case xdict:find(Key, State#state.key_queue) of
