@@ -1,0 +1,14 @@
+{application, mud_context,
+    [
+        {description, ""},
+        {vsn, "0.1.0"},
+        {registered, []},
+        {applications, [
+                        kernel,
+                        stdlib,
+                        riak_core
+                        ]},
+        {mod, {mud_context_app, []}},
+        {env, []}
+    ]}.
+
