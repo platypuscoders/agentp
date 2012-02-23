@@ -186,7 +186,7 @@ process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State) ->
          end,
          case xdict:find(Key, State#state.key_queue) of
             Val when Val =:= false;
-                      Val =:= [] ->
+                      Val =:= {Key, []} ->
                % no more in the queue so clear out the key_pids
                NewKeyDict = xdict:store(Key, State#state.key_dict, NewKeyData),
                NewKeyPids = lists:keydelete(Pid, 2, State#state.key_pids), 
