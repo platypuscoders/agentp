@@ -29,12 +29,12 @@
 %% API
 -spec mud_context_vnode:start_vnode(I::integer()) -> pid().
 start_vnode(I) ->
-io:format("start_vnode: ~p~n", [I]),
+%io:format("start_vnode: ~p~n", [I]),
    riak_core_vnode_master:get_vnode_pid(I, ?MODULE).
 
 -spec mud_context_vnode:init([I::integer()]) -> {ok, #state{}}.
 init([Partition]) ->
-   io:format("vnode context init: ~p~n", [Partition]),
+%   io:format("vnode context init: ~p~n", [Partition]),
    {ok, #state { partition=Partition}}.
 
 -spec mud_context_vnode:handle_command

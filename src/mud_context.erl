@@ -1,6 +1,11 @@
 -module(mud_context).
 -export([ create/2, delete/1, exists/1, set_context/4, set_synched_context/4, set_map_context/3 ]).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
+
 -spec mud_context:create(Key::term(), Data::term()) -> 'ok'.
 create(Key, Data) ->
    send_command(Key, {create, Key, Data}).
@@ -49,3 +54,37 @@ send_map(Command) ->
 
 mk_reqid() -> erlang:phash2(erlang:now()).
    
+
+-ifdef(TEST).
+basic_test_() ->
+   {setup, 
+      fun setup/0,
+      fun test_cleanup/1,
+      [
+         fun basic_test_case/0
+      ]
+   }.
+
+basic_test_case() -> 
+   Key = {mud_player, "Jeff"},
+   ?assert(create(Key, [{a,1}]) == ok).
+
+setup() ->
+   io:format("SETTING UP TEST~n", []),
+   application:start(crypto),
+   application:start(public_key),
+   application:start(ssl),
+   application:start(sasl),
+   application:start(os_mon),
+   application:start(webmachine),
+   application:start(riak_sysmon),
+   application:start(lager),
+   application:start(riak_core),
+   application:start(mud_context).
+
+test_cleanup(_A) -> 
+   application:stop(sasl),
+   application:stop(mud_context),
+   io:format("Cleaned up~n", []),
+   ok.
+-endif.

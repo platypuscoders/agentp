@@ -12,6 +12,9 @@ clean:
 distclean: clean
 	./rebar delete-deps
 
+run:
+	erl -pa deps/*/ebin deps/*/include ebin -name rmud@127.0.0.1 -config etc/app.config
+
 
 ##
 ## Dialyzer
