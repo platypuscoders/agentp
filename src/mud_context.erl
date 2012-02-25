@@ -78,12 +78,13 @@ setup() ->
    application:start(os_mon),
    application:start(webmachine),
    application:start(riak_sysmon),
+   application:start(compiler),
+   application:start(syntax_tools),
    application:start(lager),
    application:start(riak_core),
    application:start(mud_context).
 
 test_cleanup(_A) -> 
-   application:stop(sasl),
    application:stop(mud_context),
    io:format("Cleaned up~n", []),
    ok.

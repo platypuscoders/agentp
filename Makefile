@@ -40,7 +40,7 @@ dialyzer_apps: deps compile
 	@echo Use "'make build_plt'" to build PLT prior to using this target.
 	@echo
 	@sleep 1
-	dialyzer -Wno_return -Wno_undefined_callbacks --plt $(COMBO_PLT) ebin
+	dialyzer -Wunmatched_returns -Werror_handling -Wrace_conditions -Wbehaviors -Wunderspecs -Wno_return -Wno_undefined_callbacks --plt $(COMBO_PLT) ebin
 
 dialyzer: deps compile
 	@echo
@@ -51,7 +51,7 @@ dialyzer: deps compile
 	dialyzer -Wno_return -Wno_undefined_callbacks --plt $(COMBO_PLT) deps/*/ebin ebin
 
 eunit: deps compile
-	./rebar eunit skip_deps=true
+	ERL_FLAGS="-name rmud@127.0.0.1 -config etc/app.config" ./rebar eunit skip_deps=true
 
 cleanplt:
 	@echo
