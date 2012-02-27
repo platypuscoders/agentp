@@ -62,13 +62,13 @@ basic_test_() ->
       fun setup/0,
       fun test_cleanup/1,
       [
-         fun basic_test_case/0,
-         fun parallel_test_case_1/0,
-         fun parallel_test_case_2/0
+         fun basic_test_case_0/0,
+         fun basic_test_case_1/0,
+         fun basic_test_case_2/0
       ]
    }.
 
-basic_test_case() -> 
+basic_test_case_0() -> 
    Key = {mud_player, "Jeff"},
    [
       ?assertEqual(ok, create(Key, [{a,1}])),
@@ -77,7 +77,7 @@ basic_test_case() ->
       ?assertEqual(false, exists(Key))
    ].
 
-parallel_test_case_1() ->
+basic_test_case_1() ->
    Key = {mud_player, "Jeff"},
    [
       ?assertEqual(ok, create(Key, [{a,1}])),
@@ -86,32 +86,26 @@ parallel_test_case_1() ->
       % Test reply from context function
       ?assertEqual(a, set_synched_context(Key, ?MODULE, ctx_ptc_1, a)),
       ?assertEqual(b, set_synched_context(Key, ?MODULE, ctx_ptc_1, b)),
-      ?assertEqual(c, set_synched_context(Key, ?MODULE, ctx_ptc_1, c)),
-      ?assertEqual(d, set_synched_context(Key, ?MODULE, ctx_ptc_1, d)),
-      ?assertEqual(e, set_synched_context(Key, ?MODULE, ctx_ptc_1, e)),
       ?assert(delete(Key) == ok)
    ].
 
-parallel_test_case_2() ->
-   Keya = {mud_player, "a"},
-   Keyb = {mud_player, "b"},
-   Keyc = {mud_player, "c"},
-   Keyd = {mud_player, "d"},
-   Keye = {mud_player, "e"},
-   create(Keya, [{a,1}]),
-   create(Keyb, [{b,1}]),
-   create(Keyc, [{c,1}]),
-   create(Keyd, [{d,1}]),
-   create(Keye, [{e,1}]),
-   
+basic_test_case_2() ->
+   ?assertEqual(ok, create(Key, [{a,1}])),
+   ?assert(exists(Key) == true),
+
    [
       % Test manual reply from context function
-      ?assertEqual(a, set_synched_context(Keya, ?MODULE, ctx_ptc_2, a)),
-      ?assertEqual(b, set_synched_context(Keyb, ?MODULE, ctx_ptc_2, b)),
-      ?assertEqual(c, set_synched_context(Keyc, ?MODULE, ctx_ptc_2, c)),
-      ?assertEqual(d, set_synched_context(Keyd, ?MODULE, ctx_ptc_2, d)),
-      ?assertEqual(e, set_synched_context(Keye, ?MODULE, ctx_ptc_2, e))
+      ?assertEqual(a, set_synched_context(Key, ?MODULE, ctx_ptc_2, a)),
+      ?assertEqual(b, set_synched_context(Key, ?MODULE, ctx_ptc_2, b))
    ].
+
+parallel_test_() ->
+   {setup,
+      fun setup/0,
+      fun test_cleanup/1,
+      [
+      ]
+   }.
 
 ctx_ptc_1(Args, _Sender, KeyData) ->
    {reply, Args, KeyData}.
