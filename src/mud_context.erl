@@ -2,6 +2,7 @@
 -export([ create/2, delete/1, exists/1, set_context/4, set_synched_context/4, set_map_context/3 ]).
 
 -ifdef(TEST).
+-export([ ctx_ptc_1/3, ctx_ptc_2/3 ]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -61,13 +62,71 @@ basic_test_() ->
       fun setup/0,
       fun test_cleanup/1,
       [
-         fun basic_test_case/0
+         fun basic_test_case/0,
+         fun parallel_test_case_1/0,
+         fun parallel_test_case_2/0
       ]
    }.
 
 basic_test_case() -> 
    Key = {mud_player, "Jeff"},
-   ?assert(create(Key, [{a,1}]) == ok).
+   [
+      ?assertEqual(ok, create(Key, [{a,1}])),
+      ?assertEqual(true, exists(Key)),
+      ?assertEqual(ok, delete(Key)),
+      ?assertEqual(false, exists(Key))
+   ].
+
+parallel_test_case_1() ->
+   Key = {mud_player, "Jeff"},
+   [
+      ?assertEqual(ok, create(Key, [{a,1}])),
+      ?assert(exists(Key) == true),
+
+      % Test reply from context function
+      ?assertEqual(a, set_synched_context(Key, ?MODULE, ctx_ptc_1, a)),
+      ?assertEqual(b, set_synched_context(Key, ?MODULE, ctx_ptc_1, b)),
+      ?assertEqual(c, set_synched_context(Key, ?MODULE, ctx_ptc_1, c)),
+      ?assertEqual(d, set_synched_context(Key, ?MODULE, ctx_ptc_1, d)),
+      ?assertEqual(e, set_synched_context(Key, ?MODULE, ctx_ptc_1, e)),
+      ?assert(delete(Key) == ok)
+   ].
+
+parallel_test_case_2() ->
+   Keya = {mud_player, "a"},
+   Keyb = {mud_player, "b"},
+   Keyc = {mud_player, "c"},
+   Keyd = {mud_player, "d"},
+   Keye = {mud_player, "e"},
+   create(Keya, [{a,1}]),
+   create(Keyb, [{b,1}]),
+   create(Keyc, [{c,1}]),
+   create(Keyd, [{d,1}]),
+   create(Keye, [{e,1}]),
+   
+   [
+      % Test manual reply from context function
+      ?assertEqual(a, set_synched_context(Keya, ?MODULE, ctx_ptc_2, a)),
+      ?assertEqual(b, set_synched_context(Keyb, ?MODULE, ctx_ptc_2, b)),
+      ?assertEqual(c, set_synched_context(Keyc, ?MODULE, ctx_ptc_2, c)),
+      ?assertEqual(d, set_synched_context(Keyd, ?MODULE, ctx_ptc_2, d)),
+      ?assertEqual(e, set_synched_context(Keye, ?MODULE, ctx_ptc_2, e))
+   ].
+
+ctx_ptc_1(Args, _Sender, KeyData) ->
+   {reply, Args, KeyData}.
+
+ctx_ptc_2(Args, Sender, KeyData) ->
+   io:format("ctx_ptc_2: (~p) IN~n", [Args]),
+   Fun = fun() ->
+      timer:sleep(500),
+      riak_core_vnode:reply(Sender, Args),
+      io:format("ctx_ptc_2: (~p) OUT~n", [Args])
+   end,
+
+   spawn(Fun),
+
+   {noreply, KeyData}.
 
 setup() ->
    io:format("SETTING UP TEST~n", []),
@@ -83,6 +142,7 @@ setup() ->
    application:start(lager),
    application:start(riak_core),
    application:start(mud_context).
+
 
 test_cleanup(_A) -> 
    application:stop(mud_context),
