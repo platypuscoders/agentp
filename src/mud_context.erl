@@ -2,7 +2,7 @@
 -export([ create/2, delete/1, exists/1, set_context/4, set_synched_context/4, set_map_context/3 ]).
 
 -ifdef(TEST).
--export([ ctx_ptc_1/3, ctx_ptc_2/3 ]).
+-export([ ctx_ptc_1/3, ctx_ptc_2/3, ctx_ptc_3/3 ]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -69,6 +69,7 @@ basic_test_() ->
    }.
 
 basic_test_case_0() -> 
+
    Key = {mud_player, "Jeff"},
    [
       ?assertEqual(ok, create(Key, [{a,1}])),
@@ -90,10 +91,12 @@ basic_test_case_1() ->
    ].
 
 basic_test_case_2() ->
-   ?assertEqual(ok, create(Key, [{a,1}])),
-   ?assert(exists(Key) == true),
+   Key = {mud_player, "Jeff"},
 
    [
+      ?assertEqual(ok, create(Key, [{a,1}])),
+      ?assert(exists(Key) == true),
+
       % Test manual reply from context function
       ?assertEqual(a, set_synched_context(Key, ?MODULE, ctx_ptc_2, a)),
       ?assertEqual(b, set_synched_context(Key, ?MODULE, ctx_ptc_2, b))
@@ -104,26 +107,57 @@ parallel_test_() ->
       fun setup/0,
       fun test_cleanup/1,
       [
+         fun p_test_0/0
       ]
    }.
+
+p_test_0() ->
+   KeyList = [a,a,a,a,a],
+
+   % Create keys
+   [create(Key, [{a,1}]) || Key <- KeyList],
+
+
+   % Base fun
+   Pid = self(),
+   Fun = fun(A) -> 
+      Ret = set_synched_context(A, ?MODULE, ctx_ptc_3, A),
+      Pid ! A
+   end,
+
+
+   % Spawn threads
+   [spawn(fun() -> Fun(Key) end) || Key <- KeyList],
+
+   % Receive response
+   Ret = [begin
+      receive
+         Key -> ok
+      end
+   end || Key <- KeyList],
+
+   RetVal = [
+      ?assertEqual([ok || _ <- KeyList], Ret)
+   ],
+
+   [delete(Key) || Key <- KeyList],
+   RetVal.
+
+
+
 
 ctx_ptc_1(Args, _Sender, KeyData) ->
    {reply, Args, KeyData}.
 
+ctx_ptc_3(Args, _Sender, KeyData) ->
+   timer:sleep(100),
+   {reply, Args, KeyData}.
+
 ctx_ptc_2(Args, Sender, KeyData) ->
-   io:format("ctx_ptc_2: (~p) IN~n", [Args]),
-   Fun = fun() ->
-      timer:sleep(500),
-      riak_core_vnode:reply(Sender, Args),
-      io:format("ctx_ptc_2: (~p) OUT~n", [Args])
-   end,
-
-   spawn(Fun),
-
+   riak_core_vnode:reply(Sender, Args),
    {noreply, KeyData}.
 
 setup() ->
-   io:format("SETTING UP TEST~n", []),
    application:start(crypto),
    application:start(public_key),
    application:start(ssl),
@@ -138,8 +172,5 @@ setup() ->
    application:start(mud_context).
 
 
-test_cleanup(_A) -> 
-   application:stop(mud_context),
-   io:format("Cleaned up~n", []),
-   ok.
+test_cleanup(_A) -> ok.
 -endif.
