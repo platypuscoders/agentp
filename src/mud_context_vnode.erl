@@ -199,7 +199,10 @@ process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State) ->
                NewKeyPids = lists:keydelete(Pid, 2, State#state.key_pids), 
                State#state{key_dict=NewKeyDict, key_pids=NewKeyPids};
             {Key, [{Module, Fun, Args, Sender2} | Queue]} ->
-               NewState = run_key_callback(Key, Module, Fun, Args, Sender2, State),
+               NewKeyDict = xdict:store(Key, State#state.key_dict, NewKeyData),
+               NewKeyPids = lists:keydelete(Pid, 2, State#state.key_pids), 
+               State2 = State#state{key_dict=NewKeyDict, key_pids=NewKeyPids},
+               NewState = run_key_callback(Key, Module, Fun, Args, Sender2, State2),
                NewState#state{key_queue = xdict:store(Key, NewState#state.key_queue, Queue)}
          end
    end.
