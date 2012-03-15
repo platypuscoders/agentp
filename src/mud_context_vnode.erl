@@ -183,6 +183,8 @@ run_key_callback(Key, Module, Fun, Args, Sender, State) ->
    {Key, KeyData} = xdict:find(Key, State#state.key_dict),
    VNodePid = self(),
    Pid = spawn(fun() -> context_run(VNodePid, Module, Fun, Args, Sender, KeyData) end),
+   monitor(process, Pid),
+
    % Store callback information 
    State#state{key_pids = xlists:keystore(Key, 1, State#state.key_pids, {Key, Pid, Sender})}.
 
