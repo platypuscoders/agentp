@@ -129,7 +129,7 @@ handle_info({process_completed, {Reply, RetValue, NewKeyData}, Pid}, State) ->
    {ok, NewState};
 
 handle_info({'DOWN', _, process, Pid, normal}, State) ->
-   error_logger:error_msg("Spawned process ~p failed with: ~p", [Pid, normal]),
+%   error_logger:error_msg("Spawned process ~p failed with: ~p", [Pid, normal]),
    {ok, State};
 
 handle_info({'DOWN', _, process, Pid, Reason}, State) ->
