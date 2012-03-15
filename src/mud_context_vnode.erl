@@ -129,10 +129,11 @@ handle_info({process_completed, {Reply, RetValue, NewKeyData}, Pid}, State) ->
    {ok, NewState};
 
 handle_info({'DOWN', _, process, Pid, normal}, State) ->
+   error_logger:error_msg("Spawned process ~p failed with: ~p", [Pid, normal]),
    {ok, State};
 
 handle_info({'DOWN', _, process, Pid, Reason}, State) ->
-   error_logger:error_msg("Spawned process ~p failed with: ~p~n", [Pid, Reason]),
+   error_logger:error_msg("Spawned process ~p failed with: ~p", [Pid, Reason]),
    %%%%%%%%%%%%%%%%
    %% TODO: Handle this error as right now the key that was locked by the process is still locked
    %%%%%%%%%%%%%%%%
@@ -172,6 +173,7 @@ queue_add(Key, Module, Fun, Args, Sender, State) ->
             {Key, Queue} ->
                ok
          end,
+io:format("~p> Blocked by: ~p Queuing: ~p ~p:~p with Queue: ~p~n", [self(), _Pid, Key, Module, Fun, Queue]),
 
          % Append the new entry for the queue to the end of the current 
          % queue
@@ -184,12 +186,14 @@ run_key_callback(Key, Module, Fun, Args, Sender, State) ->
    VNodePid = self(),
    Pid = spawn(fun() -> context_run(VNodePid, Module, Fun, Args, Sender, KeyData) end),
    monitor(process, Pid),
+io:format("~p> Spawned process ~p for Key ~p -> ~p:~p~n", [self(), Pid, Key, Module, Fun]),
 
    % Store callback information 
    State#state{key_pids = xlists:keystore(Key, 1, State#state.key_pids, {Key, Pid, Sender})}.
 
 -spec process_completed_callback(Pid::pid(), {Reply::'reply' | 'noreply', RetValue::term(), NewKeyData::dict()}, State::#state{}) -> #state{}.
 process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State) ->
+io:format("~p> Completed process ~p~n", [self(), Pid]),
    % Get the Key for this pid
    case xlists:keyfind(Pid, 2, State#state.key_pids) of
       false ->
