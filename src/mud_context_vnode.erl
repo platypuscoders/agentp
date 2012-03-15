@@ -128,6 +128,16 @@ handle_info({process_completed, {Reply, RetValue, NewKeyData}, Pid}, State) ->
    NewState = process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State),
    {ok, NewState};
 
+handle_info({'DOWN', _, process, Pid, normal}, State) ->
+   {ok, State};
+
+handle_info({'DOWN', _, process, Pid, Reason}, State) ->
+   error_logger:error_msg("Spawned process ~p failed with: ~p~n", [Pid, Reason]),
+   %%%%%%%%%%%%%%%%
+   %% TODO: Handle this error as right now the key that was locked by the process is still locked
+   %%%%%%%%%%%%%%%%
+   {ok, State};
+
 handle_info(Info, State) ->
    io:format("handle_info: ~p~n", [Info]),
    {ok, State}.
