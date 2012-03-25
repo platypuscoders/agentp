@@ -128,6 +128,17 @@ handle_info({process_completed, {Reply, RetValue, NewKeyData}, Pid}, State) ->
    NewState = process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State),
    {ok, NewState};
 
+handle_info({'DOWN', _, process, Pid, normal}, State) ->
+%   error_logger:error_msg("Spawned process ~p failed with: ~p", [Pid, normal]),
+   {ok, State};
+
+handle_info({'DOWN', _, process, Pid, Reason}, State) ->
+   error_logger:error_msg("Spawned process ~p failed with: ~p", [Pid, Reason]),
+   %%%%%%%%%%%%%%%%
+   %% TODO: Handle this error as right now the key that was locked by the process is still locked
+   %%%%%%%%%%%%%%%%
+   {ok, State};
+
 handle_info(Info, State) ->
    io:format("handle_info: ~p~n", [Info]),
    {ok, State}.
@@ -162,6 +173,7 @@ queue_add(Key, Module, Fun, Args, Sender, State) ->
             {Key, Queue} ->
                ok
          end,
+io:format("~p> Blocked by: ~p Queuing: ~p ~p:~p with Queue: ~p~n", [self(), _Pid, Key, Module, Fun, Queue]),
 
          % Append the new entry for the queue to the end of the current 
          % queue
@@ -173,11 +185,15 @@ run_key_callback(Key, Module, Fun, Args, Sender, State) ->
    {Key, KeyData} = xdict:find(Key, State#state.key_dict),
    VNodePid = self(),
    Pid = spawn(fun() -> context_run(VNodePid, Module, Fun, Args, Sender, KeyData) end),
+   monitor(process, Pid),
+io:format("~p> Spawned process ~p for Key ~p -> ~p:~p~n", [self(), Pid, Key, Module, Fun]),
+
    % Store callback information 
    State#state{key_pids = xlists:keystore(Key, 1, State#state.key_pids, {Key, Pid, Sender})}.
 
 -spec process_completed_callback(Pid::pid(), {Reply::'reply' | 'noreply', RetValue::term(), NewKeyData::dict()}, State::#state{}) -> #state{}.
 process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State) ->
+io:format("~p> Completed process ~p~n", [self(), Pid]),
    % Get the Key for this pid
    case xlists:keyfind(Pid, 2, State#state.key_pids) of
       false ->
@@ -199,7 +215,10 @@ process_completed_callback(Pid, {Reply, RetValue, NewKeyData}, State) ->
                NewKeyPids = lists:keydelete(Pid, 2, State#state.key_pids), 
                State#state{key_dict=NewKeyDict, key_pids=NewKeyPids};
             {Key, [{Module, Fun, Args, Sender2} | Queue]} ->
-               NewState = run_key_callback(Key, Module, Fun, Args, Sender2, State),
+               NewKeyDict = xdict:store(Key, State#state.key_dict, NewKeyData),
+               NewKeyPids = lists:keydelete(Pid, 2, State#state.key_pids), 
+               State2 = State#state{key_dict=NewKeyDict, key_pids=NewKeyPids},
+               NewState = run_key_callback(Key, Module, Fun, Args, Sender2, State2),
                NewState#state{key_queue = xdict:store(Key, NewState#state.key_queue, Queue)}
          end
    end.
